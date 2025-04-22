@@ -3524,6 +3524,7 @@ static int test_empty_salt_info_HKDF(void)
     size_t outlen;
     int ret = 0;
     unsigned char salt[] = "";
+    unsigned char fake[] = "0123456789";
     unsigned char key[] = "012345678901234567890123456789";
     unsigned char info[] = "";
     const unsigned char expected[] = {
@@ -3540,6 +3541,8 @@ static int test_empty_salt_info_HKDF(void)
 
     if (!TEST_int_gt(EVP_PKEY_derive_init(pctx), 0)
             || !TEST_int_gt(EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha256()), 0)
+            || !TEST_int_gt(EVP_PKEY_CTX_set1_hkdf_salt(pctx, fake,
+                                                        sizeof(fake) - 1), 0)
             || !TEST_int_gt(EVP_PKEY_CTX_set1_hkdf_salt(pctx, salt,
                                                         sizeof(salt) - 1), 0)
             || !TEST_int_gt(EVP_PKEY_CTX_set1_hkdf_key(pctx, key,
@@ -5171,6 +5174,11 @@ static int test_evp_updated_iv(int idx)
     if (!TEST_true(EVP_CIPHER_CTX_get_updated_iv(ctx, updated_iv, sizeof(updated_iv)))) {
         errmsg = "CIPHER_CTX_GET_UPDATED_IV";
         goto err;
+    } else {
+        if (fips_provider_version_ge(testctx, 3, 6, 0) && !TEST_false(ERR_peek_error())) {
+            errmsg = "CIPHER_CTX_GET_UPDATED_IV_SILENT_ERROR";
+            goto err;
+        }
     }
     iv_len = EVP_CIPHER_CTX_get_iv_length(ctx);
     if (!TEST_int_ge(iv_len,0)) {

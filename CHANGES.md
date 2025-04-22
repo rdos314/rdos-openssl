@@ -57,6 +57,12 @@ OpenSSL 3.6
 
    *Adrian Stanciu*
 
+ * Change default EC point formats configuration to support only 'uncompressed'
+   format, and add SSL_OP_LEGACY_EC_POINT_FORMATS flag and options to re-enable
+   previous default if required.
+
+   *Tim Perry*
+
 OpenSSL 3.5
 -----------
 
@@ -6617,6 +6623,11 @@ OpenSSL 1.1.0
    validated when establishing a connection.
 
    *Rob Percival <robpercival@google.com>*
+
+ * SSLv3 is by default disabled at build-time. Builds that are not
+   configured with "enable-ssl3" will not support SSLv3.
+
+   *Kurt Roeckx*
 
 OpenSSL 1.0.2
 -------------
