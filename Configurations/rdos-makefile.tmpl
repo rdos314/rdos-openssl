@@ -10,20 +10,6 @@
 
  my $build_scheme = $target{build_scheme};
  my $install_flavour = $build_scheme->[$#$build_scheme]; # last element
- my $win_installenv =
-     $install_flavour eq "VC-WOW" ? "ProgramFiles(x86)"
-                                  : "ProgramW6432";
- my $win_commonenv =
-     $install_flavour eq "VC-WOW" ? "CommonProgramFiles(x86)"
-                                  : "CommonProgramW6432";
- our $win_installroot =
-     defined($ENV{$win_installenv}) ? $win_installenv : 'ProgramFiles';
- our $win_commonroot =
-     defined($ENV{$win_commonenv}) ? $win_commonenv : 'CommonProgramFiles';
-
- # expand variables early
- $win_installroot = $ENV{$win_installroot};
- $win_commonroot = $ENV{$win_commonroot};
 
  # This makes sure things get built in the order they need
  # to. You're welcome.
@@ -49,7 +35,6 @@ SHLIB_VERSION_NUMBER={- $config{shlib_version} -}
 
 LIBS={- join(" ", map { ( platform->sharedlib_import($_), platform->staticlib($_) ) } @{$unified_info{libraries}}) -}
 SHLIBS={- join(" ", map { platform->sharedlib($_) // () } @{$unified_info{libraries}}) -}
-SHLIBPDBS={- join(" ", map { platform->sharedlibpdb($_) // () } @{$unified_info{libraries}}) -}
 MODULES={- our @MODULES = map { platform->dso($_) }
                           # Drop all modules that are dependencies, they will
                           # be processed through their dependents
@@ -70,7 +55,6 @@ FIPSMODULE={- # We do some extra checking here, as there should be only one
 FIPSMODULENAME={- die "More that one FIPS module" if scalar @fipsmodules > 1;
                   join(", ", map { basename(platform->dso($_)) } @fipsmodules) -}
 PROGRAMS={- our @PROGRAMS = map { platform->bin($_) } @{$unified_info{programs}}; join(" ", @PROGRAMS) -}
-PROGRAMPDBS={- join(" ", map { $_.".pdb" } @{$unified_info{programs}}) -}
 SCRIPTS={- our @SCRIPTS = @{$unified_info{scripts}}; join(" ", @SCRIPTS) -}
 {- output_off() if $disabled{makedepend}; "" -}
 DEPS={- join(" ", map { platform->isobj($_) ? platform->dep($_) : () }
@@ -95,20 +79,8 @@ INSTALL_SHLIBS={-
                   grep { !$unified_info{attributes}->{libraries}->{$_}->{noinst} }
                   @{$unified_info{libraries}})
 -}
-INSTALL_SHLIBPDBS={-
-        join(" ", map { my $x = platform->sharedlibpdb($_);
-                        $x ? quotify_l($x) : () }
-                  grep { !$unified_info{attributes}->{libraries}->{$_}->{noinst} }
-                  @{$unified_info{libraries}})
--}
 INSTALL_ENGINES={-
         join(" ", map { quotify1(platform->dso($_)) }
-                  grep { !$unified_info{attributes}->{modules}->{$_}->{noinst}
-                         && $unified_info{attributes}->{modules}->{$_}->{engine} }
-                  @{$unified_info{modules}})
--}
-INSTALL_ENGINEPDBS={-
-        join(" ", map { quotify1(platform->dsopdb($_)) }
                   grep { !$unified_info{attributes}->{modules}->{$_}->{noinst}
                          && $unified_info{attributes}->{modules}->{$_}->{engine} }
                   @{$unified_info{modules}})
@@ -120,12 +92,6 @@ INSTALL_MODULES={-
                           && !$unified_info{attributes}->{modules}->{$_}->{fips} }
                   @{$unified_info{modules}})
 -}
-INSTALL_MODULEPDBS={-
-        join(" ", map { quotify1(platform->dsopdb($_)) }
-                  grep { !$unified_info{attributes}->{modules}->{$_}->{noinst}
-                         && !$unified_info{attributes}->{modules}->{$_}->{engine} }
-                  @{$unified_info{modules}})
--}
 INSTALL_FIPSMODULE={-
         join(" ", map { quotify1(platform->dso($_)) }
                   grep { !$unified_info{attributes}->{modules}->{$_}->{noinst}
@@ -135,11 +101,6 @@ INSTALL_FIPSMODULE={-
 INSTALL_FIPSMODULECONF=providers\fipsmodule.cnf
 INSTALL_PROGRAMS={-
         join(" ", map { quotify1(platform->bin($_)) }
-                  grep { !$unified_info{attributes}->{programs}->{$_}->{noinst} }
-                  @{$unified_info{programs}})
--}
-INSTALL_PROGRAMPDBS={-
-        join(" ", map { quotify1(platform->binpdb($_)) }
                   grep { !$unified_info{attributes}->{programs}->{$_}->{noinst} }
                   @{$unified_info{programs}})
 -}
@@ -160,30 +121,6 @@ INSTALL_EXPORTERS_CMAKE={-
                   grep { $unified_info{attributes}->{generate}->{$_}->{exporter} eq 'cmake'}
                   sort keys %{$unified_info{generate}})
 -}
-IMAGEDOCS1={- our @IMAGEDOCS1 = @{$unified_info{imagedocs}->{man1}};
-             join(" ", @IMAGEDOCS1) -}
-IMAGEDOCS3={- our @IMAGEDOCS3 = @{$unified_info{imagedocs}->{man3}};
-             join(" ", @IMAGEDOCS3) -}
-IMAGEDOCS5={- our @IMAGEDOCS5 = @{$unified_info{imagedocs}->{man5}};
-             join(" ", @IMAGEDOCS5) -}
-IMAGEDOCS7={- our @IMAGEDOCS7 = @{$unified_info{imagedocs}->{man7}};
-             join(" ", @IMAGEDOCS7) -}
-HTMLDOCS1={- our @HTMLDOCS1 = @{$unified_info{htmldocs}->{man1}};
-             join(" ", @HTMLDOCS1) -}
-HTMLDOCS3={- our @HTMLDOCS3 = @{$unified_info{htmldocs}->{man3}};
-             join(" ", @HTMLDOCS3) -}
-HTMLDOCS5={- our @HTMLDOCS5 = @{$unified_info{htmldocs}->{man5}};
-             join(" ", @HTMLDOCS5) -}
-HTMLDOCS7={- our @HTMLDOCS7 = @{$unified_info{htmldocs}->{man7}};
-             join(" ", @HTMLDOCS7) -}
-HTMLDOCS1_BLDDIRS={- my %dirs = map { dirname($_) => 1 } @HTMLDOCS1;
-                     join(' ', sort keys %dirs) -}
-HTMLDOCS3_BLDDIRS={- my %dirs = map { dirname($_) => 1 } @HTMLDOCS3;
-                     join(' ', sort keys %dirs) -}
-HTMLDOCS5_BLDDIRS={- my %dirs = map { dirname($_) => 1 } @HTMLDOCS5;
-                     join(' ', sort keys %dirs) -}
-HTMLDOCS7_BLDDIRS={- my %dirs = map { dirname($_) => 1 } @HTMLDOCS7;
-                     join(' ', sort keys %dirs) -}
 
 APPS_OPENSSL="{- use File::Spec::Functions;
                  catfile("apps","openssl") -}"
