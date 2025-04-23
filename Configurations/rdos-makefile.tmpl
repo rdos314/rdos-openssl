@@ -491,7 +491,7 @@ install_dev: install_runtime_libs
 	@$(ECHO) "*** Installing development files"
 	@"$(PERL)" "$(SRCDIR)\util\mkdir-p.pl" "$(INSTALLTOP)\include\openssl"
 	@{- output_off() if $disabled{uplink}; "" -}
-	@"$(PERL)" "$(SRCDIR)\util\copy.pl" "$(SRCDIR)\ms\applink.c" \
+	@"$(PERL)" "$(SRCDIR)\util\copy.pl" \
 				       "$(INSTALLTOP)\include\openssl"
 	@{- output_on() if $disabled{uplink}; "" -}
 	@"$(PERL)" "$(SRCDIR)\util\copy.pl" "-exclude_re=/__DECC_" \
