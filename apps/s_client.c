@@ -18,6 +18,10 @@
 #include "internal/nelem.h"
 #include "internal/sockets.h" /* for openssl_fdset() */
 
+#ifdef OPENSSL_SYS_RDOS
+#include "rdos.h"
+#endif
+
 #ifndef OPENSSL_NO_SOCK
 
 /*
@@ -765,6 +769,7 @@ typedef enum PROTOCOL_choice {
     PROTO_TELNET,
     PROTO_XMPP,
     PROTO_XMPP_SERVER,
+    PROTO_CONNECT,
     PROTO_IRC,
     PROTO_MYSQL,
     PROTO_POSTGRES,
@@ -961,8 +966,17 @@ int s_client_main(int argc, char **argv)
     BIO_ADDR *peer_addr = NULL;
     struct user_data_st user_data;
 
+#ifdef OPENSSL_SYS_RDOS
+    int n0,n1,n2,n3;
+    int ip;
+    int portnr;
+    int key_count = 0;
+    int wait = RdosCreateWait();
+#else
     FD_ZERO(&readfds);
     FD_ZERO(&writefds);
+#endif
+
 /* Known false-positive of MemorySanitizer. */
 #if defined(__has_feature)
 # if __has_feature(memory_sanitizer)
@@ -2169,6 +2183,23 @@ int s_client_main(int argc, char **argv)
     if (tfo)
         BIO_printf(bio_c_out, "Connecting via TFO\n");
  re_start:
+
+#ifdef OPENSSL_SYS_RDOS
+    if (sscanf(host, "%d.%d.%d.%d", &n3, &n2, &n1, &n0) == 4)
+        ip = n3 + (n2 + (n1 + n0 * 256) * 256) * 256;
+    else
+        ip = 0;
+
+    portnr = atoi(port);
+
+    sock = BIO_open_socket(ip, portnr);
+    if (!sock)
+    {
+        BIO_printf(bio_err, "connect:errno=%d\n", get_last_socket_error());
+        BIO_closesocket(sock);
+        goto end;
+    }
+#else
     /* peer_addr might be set from previous connections */
     BIO_ADDR_free(peer_addr);
     peer_addr = NULL;
@@ -2178,6 +2209,8 @@ int s_client_main(int argc, char **argv)
         BIO_closesocket(sock);
         goto end;
     }
+#endif
+
     BIO_printf(bio_c_out, "CONNECTED(%08X)\n", sock);
 
     /*
@@ -2319,11 +2352,19 @@ int s_client_main(int argc, char **argv)
     SSL_set_bio(con, sbio, sbio);
     SSL_set_connect_state(con);
 
+#ifdef OPENSSL_SYS_RDOS
+    RdosAddWaitForTcpConnection(wait, SSL_get_handle(con), 2);
+    RdosAddWaitForKeyboard(wait, 1);
+
+#else
+
     /* ok, lets connect */
     if (fileno_stdin() > SSL_get_fd(con))
         width = fileno_stdin() + 1;
     else
         width = SSL_get_fd(con) + 1;
+
+#endif
 
     read_tty = 1;
     write_tty = 0;
@@ -2535,6 +2576,8 @@ int s_client_main(int argc, char **argv)
         break;
     case PROTO_IRC:
         {
+#ifndef OPENSSL_SYS_RDOS
+
             int numeric;
             BIO *fbio = BIO_new(BIO_f_buffer());
 
@@ -2597,6 +2640,7 @@ int s_client_main(int argc, char **argv)
                 ret = 1;
                 goto shut;
             }
+#endif
         }
         break;
     case PROTO_MYSQL:
@@ -2905,8 +2949,10 @@ int s_client_main(int argc, char **argv)
 
     user_data_init(&user_data, con, cbuf, BUFSIZZ, cmdmode);
     for (;;) {
+#ifndef OPENSSL_SYS_RDOS
         FD_ZERO(&readfds);
         FD_ZERO(&writefds);
+#endif
 
         if ((isdtls || isquic)
             && SSL_get_event_timeout(con, &timeout, &is_infinite)
@@ -2945,7 +2991,12 @@ int s_client_main(int argc, char **argv)
                                "drop connection and then reconnect\n");
                     do_ssl_shutdown(con);
                     SSL_set_connect_state(con);
+
+#ifdef OPENSSL_SYS_RDOS
+                    BIO_closesocket(SSL_get_handle(con));
+#else
                     BIO_closesocket(SSL_get_fd(con));
+#endif
                     goto re_start;
                 }
             }
@@ -2986,6 +3037,15 @@ int s_client_main(int argc, char **argv)
         ssl_pending = read_ssl && SSL_has_pending(con);
 
         if (!ssl_pending) {
+#ifdef OPENSSL_SYS_RDOS
+            if (write_ssl)
+            {
+                if (RdosGetTcpConnectionWriteSpace(SSL_get_handle(con)) == 0)
+                    RdosWaitMilli(25);
+            }
+            else
+                RdosWaitForever(wait);
+#else
 #if !defined(OPENSSL_SYS_WINDOWS) && !defined(OPENSSL_SYS_MSDOS)
             if (tty_on) {
                 /*
@@ -3061,6 +3121,7 @@ int s_client_main(int argc, char **argv)
                            get_last_socket_error());
                 goto shut;
             }
+#endif
         }
 
         if (timeoutp != NULL) {
@@ -3071,9 +3132,13 @@ int s_client_main(int argc, char **argv)
                 BIO_printf(bio_err, "TIMEOUT occurred\n");
         }
 
-        if (!ssl_pending
+#ifdef OPENSSL_SYS_RDOS
+        if (!ssl_pending && write_ssl && RdosGetTcpConnectionWriteSpace(SSL_get_handle(con))) {
+#else
+       if (!ssl_pending
                 && ((!isquic && FD_ISSET(SSL_get_fd(con), &writefds))
-                    || (isquic && (cbuf_len > 0 || first_loop)))) {
+                    || (isquic && (cbuf_len > 0 || first_loop)))) {        if (!ssl_pending && FD_ISSET(SSL_get_fd(con), &writefds)) {
+#endif
             k = SSL_write(con, &(cbuf[cbuf_off]), (unsigned int)cbuf_len);
             switch (SSL_get_error(con, k)) {
             case SSL_ERROR_NONE:
@@ -3142,7 +3207,7 @@ int s_client_main(int argc, char **argv)
                 goto shut;
             }
         }
-#if defined(OPENSSL_SYS_WINDOWS) || defined(OPENSSL_SYS_MSDOS) || defined(OPENSSL_SYS_VMS)
+#if defined(OPENSSL_SYS_WINDOWS) || defined(OPENSSL_SYS_MSDOS) || defined(OPENSSL_SYS_VMS) || defined(OPENSSL_SYS_RDOS)
         /* Assume Windows/DOS/BeOS can always write */
         else if (!ssl_pending && write_tty)
 #else
@@ -3166,8 +3231,14 @@ int s_client_main(int argc, char **argv)
                 read_ssl = 1;
                 write_tty = 0;
             }
+
+
+#ifdef OPENSSL_SYS_RDOS
+        } else if (ssl_pending || RdosPollTcpConnection(SSL_get_handle(con))) {
+#else
         } else if (ssl_pending
                    || (!isquic && FD_ISSET(SSL_get_fd(con), &readfds))) {
+#endif
 #ifdef RENEG
             {
                 static int iiii;
@@ -3230,12 +3301,33 @@ int s_client_main(int argc, char **argv)
                 goto shut;
             }
         }
-
         /* don't wait for client input in the non-interactive mode */
         else if (nointeractive) {
             ret = 0;
             goto shut;
+#if defined(OPENSSL_SYS_RDOS)
+        else if (read_tty && RdosPollKeyboard())
+        {
+            char ch = (char)RdosReadKeyboard();
+            printf("%c", ch);
+
+            if (ch == 0xd)
+            {
+                cbuf[key_count] = 0xd;
+                cbuf[key_count+1] = 0xa;
+                cbuf_len = key_count + 2;
+                key_count = 0;
+                cbuf_off = 0;
+                write_ssl = 1;
+                read_tty = 0;
+            }
+            else
+            {
+                cbuf[key_count] = ch;
+                key_count++;
+            }
         }
+#else
 
 /* OPENSSL_SYS_MSDOS includes OPENSSL_SYS_WINDOWS */
 #if defined(OPENSSL_SYS_MSDOS)
@@ -3282,6 +3374,7 @@ int s_client_main(int argc, char **argv)
             read_tty = 0;
         }
         first_loop = 0;
+#endif
     }
 
  shut:
@@ -3299,7 +3392,17 @@ int s_client_main(int argc, char **argv)
      * and then closing the socket sends TCP-FIN first followed by
      * TCP-RST. This seems to allow the peer to read the alert data.
      */
+#ifdef OPENSSL_SYS_RDOS
+    RdosCloseWait(wait);
+    shutdown(SSL_get_handle(con), 1); /* SHUT_WR */
+#else
     shutdown(SSL_get_fd(con), 1); /* SHUT_WR */
+#endif
+
+#ifdef OPENSSL_SYS_RDOS
+    BIO_closesocket(SSL_get_handle(con));
+#else
+
     /*
      * We just said we have nothing else to say, but it doesn't mean that
      * the other side has nothing. It's even recommended to consume incoming
@@ -3314,6 +3417,7 @@ int s_client_main(int argc, char **argv)
              && BIO_read(sbio, sbuf, BUFSIZZ) > 0);
 
     BIO_closesocket(SSL_get_fd(con));
+#endif
  end:
     if (con != NULL) {
         if (prexit != 0)
@@ -3329,7 +3433,7 @@ int s_client_main(int argc, char **argv)
     X509_free(cert);
     sk_X509_CRL_pop_free(crls, X509_CRL_free);
     EVP_PKEY_free(key);
-    OSSL_STACK_OF_X509_free(chain);
+    sk_X509_pop_free(chain, X509_free);
     OPENSSL_free(pass);
 #ifndef OPENSSL_NO_SRP
     OPENSSL_free(srp_arg.srppassin);

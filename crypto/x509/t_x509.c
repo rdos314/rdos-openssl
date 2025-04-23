@@ -16,6 +16,9 @@
 #include <openssl/x509v3.h>
 #include "crypto/asn1.h"
 #include "crypto/x509.h"
+#ifdef OPENSSL_SYS_RDOS
+#include "crypto/jsonc.h"
+#endif
 
 void OSSL_STACK_OF_X509_free(STACK_OF(X509) *certs)
 {
@@ -195,6 +198,86 @@ int X509_print_ex(BIO *bp, X509 *x, unsigned long nmflags,
     return ret;
 }
 
+#ifdef OPENSSL_SYS_RDOS
+JSON_DOC *X509_get_json(X509 *x)
+{
+    long l;
+    int ret = 0, i;
+    char *m = NULL, mlch = ' ';
+    int nmindent = 0;
+    ASN1_INTEGER *bs;
+    EVP_PKEY *pkey = NULL;
+    const X509_ALGOR *tsig_alg = X509_get0_tbs_sigalg(x);
+    const char *neg;
+    struct tm tm;
+    JSON_DOC *doc;
+    JSON_COLL *root;
+    char *str;
+    char hex[8];
+
+    str = (char *)malloc(0x1000);
+
+    doc = CreateJson();
+    root = GetJsonRoot(doc);
+
+    l = X509_get_version(x);
+    AddJsonInt(root, "version", l + 1);
+
+    bs = X509_get_serialNumber(x);
+    if (bs->length <= (int)sizeof(long)) 
+        l = ASN1_INTEGER_get(bs);
+    else
+        l = -1;
+
+    if (l != -1) 
+    {
+        unsigned long ul;
+        if (bs->type == V_ASN1_NEG_INTEGER)
+        {
+            ul = 0 - (unsigned long)l;
+            neg = "-";
+        } 
+        else 
+        {
+            ul = l;
+            neg = "";
+        }
+
+        sprintf(str, "%s%lu", neg, ul);
+    } 
+    else 
+    {
+        neg = (bs->type == V_ASN1_NEG_INTEGER) ? "-" : "";
+        strcpy(str, neg);
+
+        for (i = 0; i < bs->length; i++) 
+        {
+            sprintf(hex, "%02x", bs->data[i]);
+            strcat(str, hex);
+        }
+    }
+
+    AddJsonString(root, "serial", str);
+
+    X509_signature_json(root, tsig_alg, NULL);
+    X509_NAME_json(root, "issuer", X509_get_issuer_name(x));
+
+    ASN1_TIME_to_tm(X509_get0_notBefore(x), &tm);
+    AddJsonTime(root, "from", &tm);
+
+    ASN1_TIME_to_tm(X509_get0_notAfter(x), &tm);
+    AddJsonTime(root, "to", &tm);
+
+    X509_NAME_json(root, "subject", X509_get_subject_name(x));
+
+    X509V3_extensions_json(root, X509_get0_extensions(x));
+
+    free(str);
+
+    return doc;
+}
+#endif
+
 int X509_ocspid_print(BIO *bp, X509 *x)
 {
     unsigned char *der = NULL;
@@ -312,6 +395,23 @@ int X509_signature_print(BIO *bp, const X509_ALGOR *sigalg,
         return X509_signature_dump(bp, sig, indent + 4);
     return 1;
 }
+
+#fdef OPENSSL_SYS_RDOS
+int X509_signature_json(JSON_COLL *coll, const X509_ALGOR *sigalg,
+                         const ASN1_STRING *sig)
+{
+    int sig_nid;
+    char *str;
+
+    str = (char *)malloc(0x1000);
+
+    i2t_ASN1_OBJECT(str, 0x1000, sigalg->algorithm);
+    AddJsonString(coll, "signature", str);
+    free(str);
+
+    return 1;
+}
+#endif
 
 int X509_aux_print(BIO *out, X509 *x, int indent)
 {

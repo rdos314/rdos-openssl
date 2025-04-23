@@ -14,6 +14,10 @@
 #include "internal/cryptlib.h"
 #include "internal/ktls.h"
 
+#ifdef OPENSSL_SYS_RDOS
+#include "rdos.h"
+#endif
+
 #ifndef OPENSSL_NO_SOCK
 
 # include <openssl/bio.h>
@@ -116,6 +120,23 @@ static int sock_free(BIO *a)
 static int sock_read(BIO *b, char *out, int outl)
 {
     int ret = 0;
+    int size = 0;
+
+#ifdef OPENSSL_SYS_RDOS
+    int i;
+
+    for (i = 0; i < 50 && !size && out; i++)
+    {
+        size = RdosPollTcpConnection(b->num);
+        if (!size)
+            RdosWaitMilli(25);
+    }
+    if (size > outl)
+        size = outl;
+
+    ret = RdosReadTcpConnection(b->num, out, size);
+
+#else
 
     if (out != NULL) {
         clear_socket_error();
@@ -133,6 +154,9 @@ static int sock_read(BIO *b, char *out, int outl)
                 b->flags |= BIO_FLAGS_IN_EOF;
         }
     }
+
+#endif
+
     return ret;
 }
 
@@ -142,6 +166,27 @@ static int sock_write(BIO *b, const char *in, int inl)
 # if !defined(OPENSSL_NO_KTLS) || defined(OSSL_TFO_SENDTO)
     struct bss_sock_st *data = (struct bss_sock_st *)b->ptr;
 # endif
+
+#ifdef OPENSSL_SYS_RDOS
+
+    ret = RdosGetTcpConnectionWriteSpace(b->num);
+
+    while (!ret && !RdosIsTcpConnectionClosed(b->num))
+    {
+        RdosWaitForTcpConnectionWriteSpace(b->num);
+        ret = RdosGetTcpConnectionWriteSpace(b->num);
+    }
+
+    if (ret > inl)
+        ret = inl;
+
+    if (ret)
+    {
+        RdosWriteTcpConnection(b->num, in, ret);
+        RdosPushTcpConnection(b->num);
+    }
+
+#else
 
     clear_socket_error();
 # ifndef OPENSSL_NO_KTLS
@@ -170,6 +215,9 @@ static int sock_write(BIO *b, const char *in, int inl)
         if (BIO_sock_should_retry(ret))
             BIO_set_retry_write(b);
     }
+
+#endif
+
     return ret;
 }
 

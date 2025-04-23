@@ -23,6 +23,12 @@
 #ifndef OPENSSL_TYPES_H
 # define OPENSSL_TYPES_H
 
+#ifdef OPENSSL_SYS_RDOS
+#define JSON_DOC void
+#define JSON_COLL void
+#define JSON_STR_ARR void
+#endif
+
 # include <limits.h>
 
 # ifdef  __cplusplus

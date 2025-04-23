@@ -18,6 +18,10 @@
 #include <openssl/err.h>
 #include "fuzzer.h"
 
+#ifdef OPENSSL_SYS_RDOS
+#include "rdos.h"
+#endif
+
 /* unused, to avoid warning. */
 static int idx;
 

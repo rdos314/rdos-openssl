@@ -28,7 +28,11 @@ extern "C" {
  * However, if none is defined, Unix is assumed.
  **/
 
+#ifdef __RDOS__
+# define OPENSSL_SYS_RDOS
+#else
 # define OPENSSL_SYS_UNIX
+#endif
 
 /* --------------------- Microsoft operating systems ---------------------- */
 
@@ -39,6 +43,7 @@ extern "C" {
 # if defined(OPENSSL_SYS_MSDOS)
 #  undef OPENSSL_SYS_UNIX
 # endif
+
 
 /*
  * For 32 bit environment, there seems to be the CygWin environment and then
