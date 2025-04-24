@@ -125,6 +125,11 @@ INSTALL_EXPORTERS_CMAKE={-
 APPS_OPENSSL="{- use File::Spec::Functions;
                  catfile("apps","openssl") -}"
 
+# DESTDIR is for package builders so that they can configure for, say,
+# /usr/ and yet have everything installed to /tmp/somedir/usr/.
+# Normally it is left empty.
+DESTDIR=
+
 # Do not edit these manually. Use Configure with --prefix or --openssldir
 # to change this!  Short explanation in the top comment in Configure
 INSTALLTOP_dev={- # $prefix is used in the OPENSSLDIR perl snippet
