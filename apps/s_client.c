@@ -769,7 +769,6 @@ typedef enum PROTOCOL_choice {
     PROTO_TELNET,
     PROTO_XMPP,
     PROTO_XMPP_SERVER,
-    PROTO_CONNECT,
     PROTO_IRC,
     PROTO_MYSQL,
     PROTO_POSTGRES,
@@ -3137,7 +3136,7 @@ int s_client_main(int argc, char **argv)
 #else
        if (!ssl_pending
                 && ((!isquic && FD_ISSET(SSL_get_fd(con), &writefds))
-                    || (isquic && (cbuf_len > 0 || first_loop)))) {        if (!ssl_pending && FD_ISSET(SSL_get_fd(con), &writefds)) {
+                    || (isquic && (cbuf_len > 0 || first_loop)))) {
 #endif
             k = SSL_write(con, &(cbuf[cbuf_off]), (unsigned int)cbuf_len);
             switch (SSL_get_error(con, k)) {
@@ -3326,8 +3325,8 @@ int s_client_main(int argc, char **argv)
                 cbuf[key_count] = ch;
                 key_count++;
             }
-        }
 #else
+        }
 
 /* OPENSSL_SYS_MSDOS includes OPENSSL_SYS_WINDOWS */
 #if defined(OPENSSL_SYS_MSDOS)
