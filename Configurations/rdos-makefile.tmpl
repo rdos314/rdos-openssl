@@ -31,10 +31,10 @@ VERSION_NUMBER={- "$config{version}" -}
 MAJOR={- $config{major} -}
 MINOR={- $config{minor} -}
 
-SHLIB_VERSION_NUMBER={- $config{shlib_version} -}
+SHLIB_VERSION_NUMBER=
 
-LIBS={- join(" ", map { ( platform->sharedlib_import($_), platform->staticlib($_) ) } @{$unified_info{libraries}}) -}
-SHLIBS={- join(" ", map { platform->sharedlib($_) // () } @{$unified_info{libraries}}) -}
+LIBS={- join(" ", map { ( platform->staticlib($_) ) } @{$unified_info{libraries}}) -}
+SHLIBS= -}
 MODULES={- our @MODULES = map { platform->dso($_) }
                           # Drop all modules that are dependencies, they will
                           # be processed through their dependents
@@ -68,14 +68,7 @@ GENERATED={- # common0.tmpl provides @generated
              join(" ", @GENERATED) -}
 
 INSTALL_LIBS={-
-        join(" ", map { quotify1(platform->sharedlib_import($_)
-                                 // platform->staticlib($_)) }
-                  grep { !$unified_info{attributes}->{libraries}->{$_}->{noinst} }
-                  @{$unified_info{libraries}})
--}
-INSTALL_SHLIBS={-
-        join(" ", map { my $x = platform->sharedlib($_);
-                        $x ? quotify_l($x) : () }
+        join(" ", map { platform->staticlib($_)) }
                   grep { !$unified_info{attributes}->{libraries}->{$_}->{noinst} }
                   @{$unified_info{libraries}})
 -}
@@ -264,19 +257,13 @@ LIB_ASFLAGS={- join(' ', $target{lib_asflags} || (),
                          '$(CNF_ASFLAGS)', '$(ASFLAGS)') -}
 LIB_CPPFLAGS={- our $lib_cppflags =
                 join(' ', $target{lib_cppflags} || (),
-                          $target{shared_cppflag} || (),
                           (map { '-D'.quotify1($_) }
                                @{$target{lib_defines}},
-                               @{$target{shared_defines}},
                                @{$config{lib_defines}},
-                               @{$config{shared_defines}}),
                           (map { '-I'.quotify1($_) }
                                @{$target{lib_includes}},
-                               @{$target{shared_includes}},
-                               @{$config{lib_includes}},
-                               @{$config{shared_includes}}),
-                          @{$config{lib_cppflags}},
-                          @{$config{shared_cppflag}});
+                               @{$config{lib_includes}}),
+                          @{$config{lib_cppflags}});
                 join(' ', $lib_cppflags,
                           (map { '-D'.quotify1($_) }
                                "OPENSSLDIR=\"$openssldir\"",
@@ -284,13 +271,9 @@ LIB_CPPFLAGS={- our $lib_cppflags =
                                "MODULESDIR=\"$modulesdir\""),
                           '$(CNF_CPPFLAGS)', '$(CPPFLAGS)') -}
 LIB_CFLAGS={- join(' ', $target{lib_cflags} || (),
-                        $target{shared_cflag} || (),
                         @{$config{lib_cflags}},
-                        @{$config{shared_cflag}},
                         '$(CNF_CFLAGS)', '$(CFLAGS)') -}
-LIB_LDFLAGS={- join(' ', $target{shared_ldflag} || (),
-                         $config{shared_ldflag} || (),
-                         '$(CNF_LDFLAGS)', '$(LDFLAGS)') -}
+LIB_LDFLAGS={- join(' ', '$(CNF_LDFLAGS)', '$(LDFLAGS)') -}
 LIB_EX_LIBS=$(CNF_EX_LIBS) $(EX_LIBS)
 DSO_ASFLAGS={- join(' ', $target{dso_asflags} || (),
                          $target{module_asflags} || (),
@@ -359,8 +342,6 @@ build_docs: build_html_docs
 build_html_docs: $(HTMLDOCS1) $(HTMLDOCS3) $(HTMLDOCS5) $(HTMLDOCS7)
 	@
 build_generated: $(GENERATED_MANDATORY)
-	@
-build_libs_nodep: $(LIBS) {- join(" ",map { platform->sharedlib_import($_) // () } @{$unified_info{libraries}}) -}
 	@
 build_modules_nodep: $(MODULES)
 	@
@@ -638,10 +619,7 @@ reconfigure reconf:
  # Helper function to figure out dependencies on libraries
  # It takes a list of library names and outputs a list of dependencies
  sub compute_lib_depends {
-     if ($disabled{shared}) {
-	 return map { platform->staticlib($_) } @_;
-     }
-     return map { platform->sharedlib_import($_) // platform->staticlib($_) } @_;
+    return map { platform->staticlib($_) } @_;
  }
 
   sub generatetarget {
@@ -860,77 +838,6 @@ EOF
      return $recipe;
  }
 
- # We *know* this routine is only called when we've configure 'shared'.
- # Also, note that even though the import library built here looks like
- # a static library, it really isn't.
- sub obj2shlib {
-     my %args = @_;
-     my $lib = $args{lib};
-     my @objs = map { platform->convertext($_) }
-                grep { platform->isobj($_) }
-                @{$args{objs}};
-     my @ress = map { platform->convertext($_) }
-                grep { platform->isres($_) }
-                @{$args{objs}};
-     my @defs = map { platform->def($_) }
-                grep { platform->isdef($_) }
-                @{$args{objs}};
-     my @deps = compute_lib_depends(@{$args{deps}});
-     die "More than one exported symbols list" if scalar @defs > 1;
-     my $linklibs = join("", map { "$_$target{ld_resp_delim}" } @deps);
-     my $objs = join($target{ld_resp_delim}, @objs);
-     my $ress = join($target{ld_resp_delim}, @ress);
-     my $deps = join(" ", @objs, @ress, @defs, @deps);
-     my $import = platform->sharedlib_import($lib);
-     my $dll =  platform->sharedlib($lib);
-     my $shared_def = $target{lddefflag} . join("", @defs);
-     my $implib_rule = $target{ld_implib_rule} || "";
-     my $implib_flag = $target{ld_implib_flag}
-                       ? "$target{ld_implib_flag}$import"
-                       : "";
-     return <<"EOF"
-# The import library may look like a static library, but it is not.
-# We MUST make the import library depend on the DLL, in case someone
-# mistakenly removes the latter.
-$import: $dll
-	$implib_rule
-$dll: $deps
-	IF EXIST $full.manifest DEL /F /Q $full.manifest
-	IF EXIST \$@ DEL /F /Q \$@
-	cmd /C "\$(LD) \$(LDFLAGS) \$(LIB_LDFLAGS) @<< $implib_flag || (DEL /Q \$(\@B).* $import & EXIT 1)"
-$objs$target{ld_resp_delim}\$(LDOUTFLAG)$dll$target{ldpostoutflag}$target{ld_resp_delim}$linklibs\$(LIB_EX_LIBS)$target{ld_resp_delim}$shared_def$target{ldresflag}$ress
-<<
-	IF EXIST $dll.manifest \\
-	   \$(MT) \$(MTFLAGS) \$(MTINFLAG)$dll.manifest \$(MTOUTFLAG)$dll
-	IF EXIST apps\\$dll DEL /Q /F apps\\$dll
-	IF EXIST test\\$dll DEL /Q /F test\\$dll
-	IF EXIST fuzz\\$dll DEL /Q /F fuzz\\$dll
-	COPY $dll apps
-	COPY $dll test
-	COPY $dll fuzz
-EOF
- }
- sub obj2dso {
-     my %args = @_;
-     my $dso = platform->dso($args{module});
-     my $dso_n = platform->dsoname($args{module});
-     my @objs = map { platform->convertext($_) }
-                grep { platform->isobj($_) }
-                @{$args{objs}};
-     my @ress = map { platform->convertext($_) }
-                grep { platform->isres($_) }
-                @{$args{objs}};
-     my @defs = map { platform->def($_) }
-                grep { platform->isdef($_) }
-                @{$args{objs}};
-     my @deps = compute_lib_depends(@{$args{deps}});
-     die "More than one exported symbols list" if scalar @defs > 1;
-     my $objs = join($target{ld_resp_delim}, @objs);
-     my $ress = join($target{ld_resp_delim}, @ress);
-     my $linklibs = join("", map { "$_$target{ld_resp_delim}" } @deps);
-     my $deps = join(" ", @objs, @ress, @defs, @deps);
-     my $shared_def = $target{lddefflag} . join("", @defs);
-     return <<"EOF";
 $dso: $deps
 	IF EXIST $dso.manifest DEL /F /Q $dso.manifest
 	cmd /C "\$(LD) \$(LDFLAGS) \$(DSO_LDFLAGS) @<< || (DEL /Q \$(\@B).* $dso_n.* & EXIT 1)"
