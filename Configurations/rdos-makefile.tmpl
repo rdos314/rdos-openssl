@@ -180,17 +180,11 @@ MODULESDIR_dev={- use File::Spec::Functions qw(:DEFAULT splitpath catpath);
 MODULESDIR_dir={- canonpath($modulesdir_dir) -}
 ENGINESDIR_dev={- $enginesdir_dev -}
 ENGINESDIR_dir={- canonpath($enginesdir_dir) -}
-!IF "$(DESTDIR)" != ""
-INSTALLTOP=$(DESTDIR)$(INSTALLTOP_dir)
-OPENSSLDIR=$(DESTDIR)$(OPENSSLDIR_dir)
-ENGINESDIR=$(DESTDIR)$(ENGINESDIR_dir)
-MODULESDIR=$(DESTDIR)$(MODULESDIR_dir)
-!ELSE
+
 INSTALLTOP=$(INSTALLTOP_dev)$(INSTALLTOP_dir)
 OPENSSLDIR=$(OPENSSLDIR_dev)$(OPENSSLDIR_dir)
 ENGINESDIR=$(ENGINESDIR_dev)$(ENGINESDIR_dir)
 MODULESDIR=$(MODULESDIR_dev)$(MODULESDIR_dir)
-!ENDIF
 
 # $(libdir) is chosen to be compatible with the GNU coding standards
 libdir={- file_name_is_absolute($libdir)
