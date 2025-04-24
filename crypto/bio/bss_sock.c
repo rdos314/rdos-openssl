@@ -120,9 +120,9 @@ static int sock_free(BIO *a)
 static int sock_read(BIO *b, char *out, int outl)
 {
     int ret = 0;
-    int size = 0;
 
 #ifdef OPENSSL_SYS_RDOS
+    int size = 0;
     int i;
 
     for (i = 0; i < 50 && !size && out; i++)

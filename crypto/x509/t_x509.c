@@ -396,7 +396,7 @@ int X509_signature_print(BIO *bp, const X509_ALGOR *sigalg,
     return 1;
 }
 
-#fdef OPENSSL_SYS_RDOS
+#ifdef OPENSSL_SYS_RDOS
 int X509_signature_json(JSON_COLL *coll, const X509_ALGOR *sigalg,
                          const ASN1_STRING *sig)
 {
