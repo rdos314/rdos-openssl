@@ -31,10 +31,10 @@ VERSION_NUMBER={- "$config{version}" -}
 MAJOR={- $config{major} -}
 MINOR={- $config{minor} -}
 
-SHLIB_VERSION_NUMBER=
+SHLIB_VERSION_NUMBER={- $config{shlib_version} -}
 
-LIBS={- join(" ", map { ( platform->staticlib($_) ) } @{$unified_info{libraries}}) -}
-SHLIBS= -}
+LIBS={- join(" ", map { ( platform->sharedlib_import($_), platform->staticlib($_) ) } @{$unified_info{libraries}}) -}
+SHLIBS={- join(" ", map { platform->sharedlib($_) // () } @{$unified_info{libraries}}) -}
 MODULES={- our @MODULES = map { platform->dso($_) }
                           # Drop all modules that are dependencies, they will
                           # be processed through their dependents
@@ -69,6 +69,12 @@ GENERATED={- # common0.tmpl provides @generated
 
 INSTALL_LIBS={-
         join(" ", map { platform->staticlib($_)) }
+                  grep { !$unified_info{attributes}->{libraries}->{$_}->{noinst} }
+                  @{$unified_info{libraries}})
+-}
+INSTALL_SHLIBS={-
+        join(" ", map { my $x = platform->sharedlib($_);
+                        $x ? quotify_l($x) : () }
                   grep { !$unified_info{attributes}->{libraries}->{$_}->{noinst} }
                   @{$unified_info{libraries}})
 -}
@@ -273,7 +279,9 @@ LIB_CPPFLAGS={- our $lib_cppflags =
 LIB_CFLAGS={- join(' ', $target{lib_cflags} || (),
                         @{$config{lib_cflags}},
                         '$(CNF_CFLAGS)', '$(CFLAGS)') -}
-LIB_LDFLAGS={- join(' ', '$(CNF_LDFLAGS)', '$(LDFLAGS)') -}
+LIB_LDFLAGS={- join(' ', $target{shared_ldflag} || (),
+                         $config{shared_ldflag} || (),
+                         '$(CNF_LDFLAGS)', '$(LDFLAGS)') -}
 LIB_EX_LIBS=$(CNF_EX_LIBS) $(EX_LIBS)
 DSO_ASFLAGS={- join(' ', $target{dso_asflags} || (),
                          $target{module_asflags} || (),
@@ -621,7 +629,10 @@ reconfigure reconf:
  # Helper function to figure out dependencies on libraries
  # It takes a list of library names and outputs a list of dependencies
  sub compute_lib_depends {
-    return map { platform->staticlib($_) } @_;
+     if ($disabled{shared}) {
+	 return map { platform->staticlib($_) } @_;
+     }
+     return map { platform->sharedlib_import($_) // platform->staticlib($_) } @_;
  }
 
   sub generatetarget {
