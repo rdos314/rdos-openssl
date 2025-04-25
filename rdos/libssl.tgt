@@ -68,8 +68,8 @@ r????WLANG_i
 0
 17
 WString
-51
-"\rdos\kernel;\rdos\classlib;include;$(%watcom)/rh"
+54
+"\rdos\kernel;\rdos\classlib;../include;$(%watcom)/rh"
 18
 MVState
 19
