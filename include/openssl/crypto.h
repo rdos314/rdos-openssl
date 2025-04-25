@@ -532,9 +532,18 @@ typedef LONG CRYPTO_ONCE;
 #    define  SPT_THREAD_SIGNAL 1
 #    define  SPT_THREAD_AWARE 1
 #    include <spthread.h>
-#   else
-#    include <pthread.h>
+#  else
+     if defined(__RDOS__)
+      typedef struct CRYPTO_ONCE {
+        int state;
+        int thread;
+      } CRYPTO_ONCE;
+      #define RDOS_ONCE_INIT {0, 0}
+#    else
+#     include <pthread.h>
+#    endif
 #   endif
+
 typedef pthread_once_t CRYPTO_ONCE;
 typedef pthread_key_t CRYPTO_THREAD_LOCAL;
 typedef pthread_t CRYPTO_THREAD_ID;
@@ -542,6 +551,7 @@ typedef pthread_t CRYPTO_THREAD_ID;
 #   define CRYPTO_ONCE_STATIC_INIT PTHREAD_ONCE_INIT
 #  endif
 # endif
+
 
 # if !defined(CRYPTO_ONCE_STATIC_INIT)
 typedef unsigned int CRYPTO_ONCE;
