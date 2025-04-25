@@ -68,7 +68,8 @@ GENERATED={- # common0.tmpl provides @generated
              join(" ", @GENERATED) -}
 
 INSTALL_LIBS={-
-        join(" ", map { platform->staticlib($_)) }
+        join(" ", map { quotify1(platform->sharedlib_import($_)
+                                 // platform->staticlib($_)) }
                   grep { !$unified_info{attributes}->{libraries}->{$_}->{noinst} }
                   @{$unified_info{libraries}})
 -}
@@ -263,13 +264,19 @@ LIB_ASFLAGS={- join(' ', $target{lib_asflags} || (),
                          '$(CNF_ASFLAGS)', '$(ASFLAGS)') -}
 LIB_CPPFLAGS={- our $lib_cppflags =
                 join(' ', $target{lib_cppflags} || (),
+                          $target{shared_cppflag} || (),
                           (map { '-D'.quotify1($_) }
                                @{$target{lib_defines}},
+                               @{$target{shared_defines}},
                                @{$config{lib_defines}},
+                               @{$config{shared_defines}}),
                           (map { '-I'.quotify1($_) }
                                @{$target{lib_includes}},
-                               @{$config{lib_includes}}),
-                          @{$config{lib_cppflags}});
+                               @{$target{shared_includes}},
+                               @{$config{lib_includes}},
+                               @{$config{shared_includes}}),
+                          @{$config{lib_cppflags}},
+                          @{$config{shared_cppflag}});
                 join(' ', $lib_cppflags,
                           (map { '-D'.quotify1($_) }
                                "OPENSSLDIR=\"$openssldir\"",
@@ -277,7 +284,9 @@ LIB_CPPFLAGS={- our $lib_cppflags =
                                "MODULESDIR=\"$modulesdir\""),
                           '$(CNF_CPPFLAGS)', '$(CPPFLAGS)') -}
 LIB_CFLAGS={- join(' ', $target{lib_cflags} || (),
+                        $target{shared_cflag} || (),
                         @{$config{lib_cflags}},
+                        @{$config{shared_cflag}},
                         '$(CNF_CFLAGS)', '$(CFLAGS)') -}
 LIB_LDFLAGS={- join(' ', $target{shared_ldflag} || (),
                          $config{shared_ldflag} || (),
