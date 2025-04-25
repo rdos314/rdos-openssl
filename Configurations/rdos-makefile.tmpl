@@ -838,15 +838,7 @@ EOF
      return $recipe;
  }
 
-$dso: $deps
-	IF EXIST $dso.manifest DEL /F /Q $dso.manifest
-	cmd /C "\$(LD) \$(LDFLAGS) \$(DSO_LDFLAGS) @<< || (DEL /Q \$(\@B).* $dso_n.* & EXIT 1)"
-$objs$target{ld_resp_delim}\$(LDOUTFLAG)$dso$target{ldpostoutflag}$target{ld_resp_delim}$linklibs \$(DSO_EX_LIBS)$target{ld_resp_delim}$shared_def$target{ldresflag}$ress
-<<
-	IF EXIST $dso.manifest \\
-	   \$(MT) \$(MTFLAGS) \$(MTINFLAG)$dso.manifest \$(MTOUTFLAG)$dso
-EOF
- }
+
  sub obj2lib {
      my %args = @_;
      my $lib = platform->staticlib($args{lib});
