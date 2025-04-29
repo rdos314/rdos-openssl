@@ -22,18 +22,6 @@
 extern "C" {
 #endif
 
-/******************************************************************************
- * Detect operating systems.  This probably needs completing.
- * The result is that at least one OPENSSL_SYS_os macro should be defined.
- * However, if none is defined, Unix is assumed.
- **/
-
-#ifdef __RDOS__
-# define OPENSSL_SYS_RDOS
-#else
-# define OPENSSL_SYS_UNIX
-#endif
-
 /* --------------------- Microsoft operating systems ---------------------- */
 
 /*

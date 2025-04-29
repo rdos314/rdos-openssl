@@ -14,6 +14,11 @@
 # include <openssl/opensslconf.h>
 # include "internal/common.h"
 
+#if defined(OPENSSL_SYS_RDOS)
+#  define NO_SYS_PARAM_H
+#  define NO_SYS_UN_H
+#endif
+
 # if defined(OPENSSL_SYS_VXWORKS) || defined(OPENSSL_SYS_UEFI)
 #  define NO_SYS_PARAM_H
 # endif
@@ -125,7 +130,9 @@ typedef size_t socklen_t;        /* Currently appears to be missing on VMS */
 #  endif
 
 #  ifndef VMS
+#   if !defined(OPENSSL_SYS_RDOS)
 #   include <sys/ioctl.h>
+#   endif
 #  else
 #   if !defined(TCPIP_TYPE_SOCKETSHR) && defined(__VMS_VER) && (__VMS_VER > 70000000)
      /* ioctl is only in VMS > 7.0 and when socketshr is not used */
@@ -190,6 +197,10 @@ typedef size_t socklen_t;        /* Currently appears to be missing on VMS */
 #  define closesocket(s)              close(s)
 #  define readsocket(s,b,n)           read((s),(b),(n))
 #  define writesocket(s,b,n)          write((s),(char *)(b),(n))
+# elif defined(OPENSSL_SYS_RDOS)
+#  define closesocket(s)          close(s)
+#  define readsocket(s,b,n)       read((s),(b),(n))
+#  define writesocket(s,b,n)      write((s),(b),(n))
 # elif defined(OPENSSL_SYS_TANDEM)
 #  define readsocket(s,b,n)       read((s),(b),(n))
 #  define writesocket(s,b,n)      write((s),(b),(n))
