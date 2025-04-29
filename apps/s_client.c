@@ -1785,7 +1785,6 @@ int s_client_main(int argc, char **argv)
         crls = sk_X509_CRL_new_null();
         if (crls == NULL || !sk_X509_CRL_push(crls, crl)) {
             BIO_puts(bio_err, "Error adding CRL\n");
-            ERR_print_errors(bio_err);
             X509_CRL_free(crl);
             goto end;
         }
@@ -1821,10 +1820,8 @@ int s_client_main(int argc, char **argv)
 #endif
 
     ctx = SSL_CTX_new_ex(app_get0_libctx(), app_get0_propq(), meth);
-    if (ctx == NULL) {
-        ERR_print_errors(bio_err);
+    if (ctx == NULL)
         goto end;
-    }
 
     SSL_CTX_clear_mode(ctx, SSL_MODE_AUTO_RETRY);
 
@@ -1838,7 +1835,6 @@ int s_client_main(int argc, char **argv)
         if (SSL_CTX_config(ctx, ssl_config) == 0) {
             BIO_printf(bio_err, "Error using configuration \"%s\"\n",
                        ssl_config);
-            ERR_print_errors(bio_err);
             goto end;
         }
     }
@@ -1864,7 +1860,6 @@ int s_client_main(int argc, char **argv)
 
     if (vpmtouched && !SSL_CTX_set1_param(ctx, vpm)) {
         BIO_printf(bio_err, "Error setting verify params\n");
-        ERR_print_errors(bio_err);
         goto end;
     }
 
@@ -1910,7 +1905,6 @@ int s_client_main(int argc, char **argv)
                          chCApath, chCAfile, chCAstore,
                          crls, crl_download)) {
         BIO_printf(bio_err, "Error loading store locations\n");
-        ERR_print_errors(bio_err);
         goto end;
     }
     if (ReqCAfile != NULL) {
@@ -1919,7 +1913,6 @@ int s_client_main(int argc, char **argv)
         if (nm == NULL || !SSL_add_file_cert_subjects_to_stack(nm, ReqCAfile)) {
             sk_X509_NAME_pop_free(nm, X509_NAME_free);
             BIO_printf(bio_err, "Error loading CA names\n");
-            ERR_print_errors(bio_err);
             goto end;
         }
         SSL_CTX_set0_CA_list(ctx, nm);
@@ -1928,7 +1921,6 @@ int s_client_main(int argc, char **argv)
     if (ssl_client_engine) {
         if (!SSL_CTX_set_client_cert_engine(ctx, ssl_client_engine)) {
             BIO_puts(bio_err, "Error setting client auth engine\n");
-            ERR_print_errors(bio_err);
             release_engine(ssl_client_engine);
             goto end;
         }
@@ -1948,14 +1940,12 @@ int s_client_main(int argc, char **argv)
 
         if (stmp == NULL) {
             BIO_printf(bio_err, "Can't open PSK session file %s\n", psksessf);
-            ERR_print_errors(bio_err);
             goto end;
         }
         psksess = PEM_read_bio_SSL_SESSION(stmp, NULL, 0, NULL);
         BIO_free(stmp);
         if (psksess == NULL) {
             BIO_printf(bio_err, "Can't read PSK session file %s\n", psksessf);
-            ERR_print_errors(bio_err);
             goto end;
         }
     }
@@ -1967,7 +1957,6 @@ int s_client_main(int argc, char **argv)
         /* Returns 0 on success! */
         if (SSL_CTX_set_tlsext_use_srtp(ctx, srtp_profiles) != 0) {
             BIO_printf(bio_err, "Error setting SRTP profile\n");
-            ERR_print_errors(bio_err);
             goto end;
         }
     }
@@ -2014,15 +2003,12 @@ int s_client_main(int argc, char **argv)
     /* Enable SCT processing, without early connection termination */
     if (ct_validation &&
         !SSL_CTX_enable_ct(ctx, SSL_CT_VALIDATION_PERMISSIVE)) {
-        ERR_print_errors(bio_err);
         goto end;
     }
 
     if (!ctx_set_ctlog_list_file(ctx, ctlog_file)) {
-        if (ct_validation) {
-            ERR_print_errors(bio_err);
+        if (ct_validation)
             goto end;
-        }
 
         /*
          * If CT validation is not enabled, the log list isn't needed so don't
@@ -2037,10 +2023,8 @@ int s_client_main(int argc, char **argv)
     SSL_CTX_set_verify(ctx, verify, verify_callback);
 
     if (!ctx_set_verify_locations(ctx, CAfile, noCAfile, CApath, noCApath,
-                                  CAstore, noCAstore)) {
-        ERR_print_errors(bio_err);
+                                  CAstore, noCAstore))
         goto end;
-    }
 
     ssl_ctx_add_crls(ctx, crls, crl_download);
 
@@ -2063,7 +2047,6 @@ int s_client_main(int argc, char **argv)
             BIO_printf(bio_err,
                        "%s: Error enabling DANE TLSA authentication.\n",
                        prog);
-            ERR_print_errors(bio_err);
             goto end;
         }
     }
@@ -2104,19 +2087,16 @@ int s_client_main(int argc, char **argv)
         BIO *stmp = BIO_new_file(sess_in, "r");
         if (stmp == NULL) {
             BIO_printf(bio_err, "Can't open session file %s\n", sess_in);
-            ERR_print_errors(bio_err);
             goto end;
         }
         sess = PEM_read_bio_SSL_SESSION(stmp, NULL, 0, NULL);
         BIO_free(stmp);
         if (sess == NULL) {
             BIO_printf(bio_err, "Can't open session file %s\n", sess_in);
-            ERR_print_errors(bio_err);
             goto end;
         }
         if (!SSL_set_session(con, sess)) {
             BIO_printf(bio_err, "Can't set session\n");
-            ERR_print_errors(bio_err);
             goto end;
         }
 
@@ -2133,7 +2113,6 @@ int s_client_main(int argc, char **argv)
         }
         if (servername != NULL && !SSL_set_tlsext_host_name(con, servername)) {
             BIO_printf(bio_err, "Unable to set TLS servername extension.\n");
-            ERR_print_errors(bio_err);
             goto end;
         }
     }
@@ -2142,7 +2121,6 @@ int s_client_main(int argc, char **argv)
         if (SSL_dane_enable(con, dane_tlsa_domain) <= 0) {
             BIO_printf(bio_err, "%s: Error enabling DANE TLSA "
                        "authentication.\n", prog);
-            ERR_print_errors(bio_err);
             goto end;
         }
         if (dane_tlsa_rrset == NULL) {
@@ -2217,10 +2195,8 @@ int s_client_main(int argc, char **argv)
      * non-blocking mode at the SSL level
      */
     if (c_nbio || isquic) {
-        if (!BIO_socket_nbio(sock, 1)) {
-            ERR_print_errors(bio_err);
+        if (!BIO_socket_nbio(sock, 1))
             goto end;
-        }
         if (c_nbio) {
             if (isquic && !SSL_set_blocking_mode(con, 0))
                 goto end;
@@ -2299,7 +2275,6 @@ int s_client_main(int argc, char **argv)
 
     if (sbio == NULL) {
         BIO_printf(bio_err, "Unable to create BIO\n");
-        ERR_print_errors(bio_err);
         BIO_closesocket(sock);
         goto end;
     }
@@ -2626,7 +2601,6 @@ int s_client_main(int argc, char **argv)
                 }
                 if (numeric == 691) {
                     BIO_printf(bio_err, "STARTTLS negotiation failed: ");
-                    ERR_print_errors(bio_err);
                     break;
                 }
             } while (numeric != 670);
@@ -2937,7 +2911,6 @@ int s_client_main(int argc, char **argv)
                 default:
                     BIO_printf(bio_err, "Error writing early data\n");
                     BIO_free(edfile);
-                    ERR_print_errors(bio_err);
                     goto shut;
                 }
             }
@@ -3202,7 +3175,6 @@ int s_client_main(int argc, char **argv)
             case SSL_ERROR_WANT_ASYNC_JOB:
                 /* This shouldn't ever happen in s_client - treat as an error */
             case SSL_ERROR_SSL:
-                ERR_print_errors(bio_err);
                 goto shut;
             }
         }
@@ -3296,7 +3268,6 @@ int s_client_main(int argc, char **argv)
             case SSL_ERROR_WANT_ASYNC_JOB:
                 /* This shouldn't ever happen in s_client. Treat as an error */
             case SSL_ERROR_SSL:
-                ERR_print_errors(bio_err);
                 goto shut;
             }
         }
@@ -3377,6 +3348,8 @@ int s_client_main(int argc, char **argv)
     }
 
  shut:
+    if (ret > 0)
+        ERR_print_errors(bio_err); /* show any errors accumulated so far */
     if (in_init)
         print_stuff(bio_c_out, con, full_log);
     do_ssl_shutdown(con);
@@ -3418,6 +3391,8 @@ int s_client_main(int argc, char **argv)
     BIO_closesocket(SSL_get_fd(con));
 #endif
  end:
+    if (ret > 0)
+        ERR_print_errors(bio_err); /* show any new or remaining errors */
     if (con != NULL) {
         if (prexit != 0)
             print_stuff(bio_c_out, con, 1);
@@ -4024,8 +3999,6 @@ static int user_data_execute(struct user_data_st *user_data, int cmd, char *arg)
     }
 
     BIO_printf(bio_err, "ERROR\n");
-    ERR_print_errors(bio_err);
-
     return USER_DATA_PROCESS_SHUT;
 }
 

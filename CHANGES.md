@@ -31,6 +31,23 @@ OpenSSL 3.6
 
 ### Changes between 3.5 and 3.6 [xx XXX xxxx]
 
+ * Relax the path check in OpenSSL's 'file:' scheme implementation for
+   OSSL_STORE.  Previously, when the 'file:' scheme is an explicit part
+   of the URI, our implementation required an absolute path, such as
+   'file:/path/to/file.pem'.  This requirement is now relaxed, allowing
+   'file:path/to/file.pem', as well as 'file:file.pem'.
+
+   *Richard Levitte*
+
+ * Changed openssl-pkey(1) to match the documentation when private keys
+   are output in DER format (`-outform DER`) by producing the `PKCS#8` form by
+   default.  Previously this would output the *traditional* form for those
+   older key types (`DSA`, `RSA`, `ECDSA`) that had such a form.  The
+   `-traditional` flag has been extended to support explicit requests to output
+   that format in DER format (it was previously PEM-only).
+
+   *Viktor Dukhovni*
+
  * Support setting a free function thunk to OPENSSL_sk stack types. Using a thunk
    allows the type specific free function to be called with the correct type
    information from generic functions like OPENSSL_sk_pop_free().
