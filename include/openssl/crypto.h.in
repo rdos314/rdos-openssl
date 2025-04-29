@@ -510,7 +510,7 @@ typedef LONG CRYPTO_ONCE;
 #    define  SPT_THREAD_AWARE 1
 #    include <spthread.h>
 #  else
-     if defined(__RDOS__)
+#    if defined(__RDOS__)
       typedef struct CRYPTO_ONCE {
         int state;
         int thread;
