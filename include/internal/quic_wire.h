@@ -90,7 +90,7 @@
 const char *ossl_quic_frame_type_to_string(uint64_t frame_type);
 
 static ossl_unused ossl_inline int
-ossl_quic_frame_type_is_ack_eliciting(uint64_t frame_type)
+ossl_quic_frame_type_is_ack_eliciting(int frame_type)
 {
     switch (frame_type) {
     case OSSL_QUIC_FRAME_TYPE_PADDING:
