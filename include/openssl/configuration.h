@@ -19,10 +19,6 @@
 extern "C" {
 # endif
 
-#ifdef OPENSSL_SYS_RDOS
-#define OPENSSLDIR "d:/ssl"
-#endif
-
 # ifdef OPENSSL_ALGORITHM_DEFINES
 #  error OPENSSL_ALGORITHM_DEFINES no longer supported
 # endif
@@ -193,6 +189,10 @@ extern "C" {
 # else
 #  undef  OPENSSL_NO_COMP_ALG
 # endif
+
+#ifdef OPENSSL_SYS_RDOS
+#define OPENSSLDIR "d:/ssl"
+#endif
 
 # ifdef  __cplusplus
 }
