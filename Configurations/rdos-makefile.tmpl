@@ -278,21 +278,7 @@ INSTALLTOP={- # $prefix is used in the OPENSSLDIR perl snippet
 	      our $prefix = $config{prefix} || "/usr/local";
               $prefix -}
 OPENSSLDIR={- #
-	      # The logic here is that if no --openssldir was given,
-	      # OPENSSLDIR will get the value from $prefix plus "/ssl".
-	      # If --openssldir was given and the value is an absolute
-	      # path, OPENSSLDIR will get its value without change.
-	      # If the value from --openssldir is a relative path,
-	      # OPENSSLDIR will get $prefix with the --openssldir
-	      # value appended as a subdirectory.
-	      #
-              use File::Spec::Functions;
-              our $openssldir =
-                  $config{openssldir} ?
-                      (file_name_is_absolute($config{openssldir}) ?
-                           $config{openssldir}
-                           : catdir($prefix, $config{openssldir}))
-                      : catdir($prefix, "ssl");
+              our $openssldir = "d:/ssl";
               $openssldir -}
 LIBDIR={- our $libdir = $config{libdir};
           unless ($libdir) {
