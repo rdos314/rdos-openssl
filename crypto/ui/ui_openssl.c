@@ -85,11 +85,12 @@
 #   define TERMIO
 #   undef  SGTTY
 /*
- * We know that VMS, MSDOS, VXWORKS, use entirely other mechanisms.
+ * We know that VMS, MSDOS, RDOS, VXWORKS, use entirely other mechanisms.
  */
 #  elif !defined(OPENSSL_SYS_VMS) \
         && !defined(OPENSSL_SYS_MSDOS) \
-        && !defined(OPENSSL_SYS_VXWORKS)
+        && !defined(OPENSSL_SYS_VXWORKS) \
+		&& !defined(OPENSSL_SYS_RDOS)
 #   define TERMIOS
 #   undef  TERMIO
 #   undef  SGTTY
@@ -127,7 +128,7 @@
 #  define TTY_set(tty,data)      ioctl(tty,TIOCSETP,data)
 # endif
 
-# if !defined(_LIBC) && !defined(OPENSSL_SYS_MSDOS) && !defined(OPENSSL_SYS_VMS) && ! (defined(OPENSSL_SYS_TANDEM) && defined(_SPT_MODEL_))
+# if !defined(_LIBC) && !defined(OPENSSL_SYS_MSDOS) && !defined(OPENSSL_SYS_RDOS) && !defined(OPENSSL_SYS_VMS) && ! (defined(OPENSSL_SYS_TANDEM) && defined(_SPT_MODEL_))
 #  include <sys/ioctl.h>
 # endif
 
@@ -168,6 +169,8 @@ static long status;
 static unsigned short channel = 0;
 # elif defined(_WIN32) && !defined(_WIN32_WCE)
 static DWORD tty_orig, tty_new;
+# elif defined(OPENSSL_SYS_RDOS)
+static int tty_orig, tty_new;
 # else
 #  if !defined(OPENSSL_SYS_MSDOS) || defined(__DJGPP__)
 static TTY_STRUCT tty_orig, tty_new;
