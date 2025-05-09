@@ -196,7 +196,7 @@ static int i2r_OSSL_DAY_TIME_BAND(X509V3_EXT_METHOD *method,
 
 static int print_int_month(BIO *out, int64_t month)
 {
-    switch (month) {
+    switch ((int)month) {
     case (OSSL_TIME_SPEC_INT_MONTH_JAN):
         return BIO_puts(out, "JAN");
     case (OSSL_TIME_SPEC_INT_MONTH_FEB):
@@ -285,7 +285,7 @@ static int print_day_of_week(BIO *out, ASN1_BIT_STRING *bs)
 
 static int print_int_day_of_week(BIO *out, int64_t dow)
 {
-    switch (dow) {
+    switch ((int)dow) {
     case (OSSL_TIME_SPEC_DAY_INT_SUN):
         return BIO_puts(out, "SUN");
     case (OSSL_TIME_SPEC_DAY_INT_MON):
@@ -308,7 +308,7 @@ static int print_int_day_of_week(BIO *out, int64_t dow)
 
 static int print_int_named_day(BIO *out, int64_t nd)
 {
-    switch (nd) {
+    switch ((int)nd) {
     case (OSSL_NAMED_DAY_INT_SUN):
         return BIO_puts(out, "SUN");
     case (OSSL_NAMED_DAY_INT_MON):

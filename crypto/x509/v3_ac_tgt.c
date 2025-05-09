@@ -116,7 +116,11 @@ static int i2r_OBJECT_DIGEST_INFO(X509V3_EXT_METHOD *method,
     if (!ASN1_ENUMERATED_get_int64(&dot, &odi->digestedObjectType)) {
         return 0;
     }
+#ifdef OPENSSL_SYS_RDOS
+    switch ((int)dot) {
+#else
     switch (dot) {
+#endif
     case OSSL_ODI_TYPE_PUBLIC_KEY:
         BIO_printf(out, "%*sDigest Type: Public Key\n", indent, "");
         break;
